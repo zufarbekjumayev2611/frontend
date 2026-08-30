@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SertifikatPro.com — Admin panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F5FB; --paper-alt:#FFFFFF; --ink:#191B32; --muted:#6B6E8D;
+    --violet:#4B3DF0; --violet-deep:#2E22B0; --violet-tint:#EDEBFF;
+    --coral:#FF5D7A; --coral-tint:#FFE9EC; --mint:#12A883;
+    --line:#E4E2F0;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;}
+  .wrap{max-width:1000px;margin:0 auto;padding:48px 24px;}
+  .card{background:var(--paper-alt);border:1px solid var(--line);border-radius:16px;padding:28px;margin-bottom:24px;}
+  label{display:flex;flex-direction:column;gap:6px;font-size:0.85rem;font-weight:600;margin-bottom:14px;}
+  input,textarea{font-family:'Inter',sans-serif;font-size:0.92rem;padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:var(--paper);width:100%;}
+  textarea{resize:vertical;min-height:70px;}
+  button{font-family:'Inter',sans-serif;font-weight:600;font-size:0.9rem;padding:12px 22px;border-radius:99px;border:none;cursor:pointer;}
+  .btn-primary{background:linear-gradient(135deg,var(--violet),var(--violet-deep));color:#fff;}
+  .btn-refresh{background:var(--violet-tint);color:var(--violet-deep);padding:8px 16px;font-size:0.8rem;}
+  .error{color:var(--coral);font-size:0.85rem;min-height:1.1em;}
+  #loginCard, #studentsCard{display:none;}
+
+  table{width:100%;border-collapse:collapse;font-size:0.85rem;}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-weight:600;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.03em;}
+  tr:last-child td{border-bottom:none;}
+  .table-wrap{overflow-x:auto;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:0.74rem;font-weight:600;background:var(--mint);color:#fff;}
+  .badge.teacher{background:var(--violet);}
+  .head-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .empty-note{color:var(--muted);font-size:0.88rem;}
+  .student-row{cursor:pointer;transition:background .12s;}
+  .student-row:hover{background:var(--violet-tint);}
+
+  /* ===== Detail modal ===== */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(16,17,36,0.55);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;}
+  .modal-backdrop[hidden]{display:none;}
+  .modal-card{background:var(--paper-alt);border-radius:16px;padding:28px;width:100%;max-width:760px;position:relative;}
+  .modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--muted);cursor:pointer;}
+  .detail-name{font-size:1.3rem;font-weight:700;}
+  .detail-meta{color:var(--muted);font-size:0.85rem;margin-top:4px;}
+  .detail-section{margin-top:22px;}
+  .detail-section h3{font-size:0.95rem;margin-bottom:10px;}
+  .attend-yes{color:#0E8F71;font-weight:700;}
+  .attend-no{color:#C23052;font-weight:700;}
+  .note-item{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+  .note-meta{color:var(--muted);font-size:0.76rem;margin-top:4px;}
+  .loading-note{color:var(--muted);font-size:0.85rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SertifikatPro.com — Admin panel</h1>
+
+  <div class="card" id="loginCard">
+    <h2 style="margin-bottom:16px;">Admin sifatida kirish</h2>
+    <label>Telefon raqam <input type="tel" id="loginPhone" placeholder="+998901234567"></label>
+    <label>Parol <input type="password" id="loginPassword"></label>
+    <p class="error" id="loginError"></p>
+    <button class="btn-primary" id="loginBtn">Kirish</button>
+  </div>
+
+  <div class="card" id="studentsCard">
+    <div class="head-row">
+      <h2>O'quvchilar (bot orqali ro'yxatdan o'tganlar)</h2>
+      <button class="btn-refresh" id="refreshStudentsBtn">Yangilash</button>
+    </div>
+    <p class="error" id="studentsError"></p>
+    <div class="table-wrap">
+      <table id="studentsTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>F.I.Sh</th><th>Telefon</th><th>Kurs</th><th>Viloyat</th><th>Tuman</th><th>Rol</th><th>Ro'yxatdan o'tgan</th>
+          </tr>
+        </thead>
+        <tbody id="studentsBody"></tbody>
+      </table>
+      <p class="empty-note" id="studentsEmpty" style="display:none;">Hozircha o'quvchi yo'q yoki Turso ulanmagan.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== O'quvchi profili (modal) ===== -->
+<div class="modal-backdrop" id="detailBackdrop" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="detailClose" type="button">✕</button>
+    <div class="detail-name" id="detailName">—</div>
+    <div class="detail-meta" id="detailMeta">—</div>
+
+    <div class="detail-section">
+      <h3>📝 Oddiy testlar natijalari</h3>
+      <div id="detailTests" class="table-wrap"><p class="empty-note">Yuklanmoqda...</p></div>
+    </div>
+
+    <div class="detail-section">
+      <h3>🎖 A+ testlar natijalari</h3>
+      <div id="detailAplus" class="table-wrap"><p class="empty-note">Yuklanmoqda...</p></div>
+    </div>
+
+    <div class="detail-section">
+      <h3>📅 Davomat</h3>
+      <div id="detailAttendance" class="table-wrap"><p class="empty-note">Yuklanmoqda...</p></div>
+    </div>
+
+    <div class="detail-section">
+      <h3>💬 Izohlar</h3>
+      <div id="notesList"><p class="empty-note">Yuklanmoqda...</p></div>
+      <label style="margin-top:14px;">Yangi izoh
+        <textarea id="newNote" placeholder="Bu o'quvchi haqida izoh yozing..."></textarea>
+      </label>
+      <p class="error" id="noteError"></p>
+      <button class="btn-primary" id="addNoteBtn">Izoh qo'shish</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var API_BASE = 'http://localhost:8000';
+
+  var loginCard = document.getElementById('loginCard');
+  var studentsCard = document.getElementById('studentsCard');
+  var loginError = document.getElementById('loginError');
+  var studentsError = document.getElementById('studentsError');
+  var studentsTable = document.getElementById('studentsTable');
+  var studentsBody = document.getElementById('studentsBody');
+  var studentsEmpty = document.getElementById('studentsEmpty');
+
+  var detailBackdrop = document.getElementById('detailBackdrop');
+  var detailClose = document.getElementById('detailClose');
+  var detailName = document.getElementById('detailName');
+  var detailMeta = document.getElementById('detailMeta');
+  var detailTests = document.getElementById('detailTests');
+  var detailAplus = document.getElementById('detailAplus');
+  var detailAttendance = document.getElementById('detailAttendance');
+  var notesList = document.getElementById('notesList');
+  var newNote = document.getElementById('newNote');
+  var noteError = document.getElementById('noteError');
+  var currentTelegramId = null;
+
+  function getToken(){ return localStorage.getItem('mp_admin_token'); }
+  function saveToken(t){ localStorage.setItem('mp_admin_token', t); }
+  function authHeaders(){ return { 'Authorization': 'Bearer ' + getToken() }; }
+
+  function showLogin(){
+    loginCard.style.display = 'block';
+    studentsCard.style.display = 'none';
+  }
+  function showPanel(){
+    loginCard.style.display = 'none';
+    studentsCard.style.display = 'block';
+    loadStudents();
+  }
+
+  function loadStudents(){
+    studentsError.textContent = '';
+    fetch(API_BASE + '/admin/students', { headers: authHeaders() })
+    .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+    .then(function(result){
+      if(!result.ok){
+        if(result.body && result.body.detail && String(result.body.detail).includes('kirish')){
+          localStorage.removeItem('mp_admin_token'); showLogin(); return;
+        }
+        studentsError.textContent = typeof result.body.detail === 'string' ? result.body.detail : "O'quvchilarni yuklab bo'lmadi.";
+        studentsTable.style.display = 'none';
+        studentsEmpty.style.display = 'none';
+        return;
+      }
+      var students = result.body;
+      if(!students.length){
+        studentsTable.style.display = 'none';
+        studentsEmpty.style.display = 'block';
+        return;
+      }
+      studentsEmpty.style.display = 'none';
+      studentsTable.style.display = 'table';
+      studentsBody.innerHTML = students.map(function(s){
+        var badgeClass = s.role === 'teacher' ? 'badge teacher' : 'badge';
+        return '<tr class="student-row" data-id="' + s.telegram_id + '" data-name="' + (s.full_name || '') + '">' +
+          '<td>' + (s.full_name || '') + '</td>' +
+          '<td>' + (s.phone || '') + '</td>' +
+          '<td>' + (s.course || '') + '</td>' +
+          '<td>' + (s.region || '') + '</td>' +
+          '<td>' + (s.district || '') + '</td>' +
+          '<td><span class="' + badgeClass + '">' + (s.role || '') + '</span></td>' +
+          '<td>' + (s.registered_at || '') + '</td>' +
+        '</tr>';
+      }).join('');
+
+      studentsBody.querySelectorAll('.student-row').forEach(function(row){
+        row.addEventListener('click', function(){
+          openDetail(row.dataset.id, row.dataset.name);
+        });
+      });
+    })
+    .catch(function(){ studentsError.textContent = "Serverga ulanib bo'lmadi."; });
+  }
+
+  function fmtDate(s){ return s || '—'; }
+
+  function renderTable(container, rows, columns){
+    if(!rows.length){ container.innerHTML = '<p class="empty-note">Ma\'lumot yo\'q.</p>'; return; }
+    var thead = '<tr>' + columns.map(function(c){ return '<th>' + c.label + '</th>'; }).join('') + '</tr>';
+    var tbody = rows.map(function(r){
+      return '<tr>' + columns.map(function(c){ return '<td>' + c.render(r) + '</td>'; }).join('') + '</tr>';
+    }).join('');
+    container.innerHTML = '<table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
+  }
+
+  function openDetail(telegramId, fullName){
+    currentTelegramId = telegramId;
+    detailName.textContent = fullName || ('ID: ' + telegramId);
+    detailMeta.textContent = 'Telegram ID: ' + telegramId;
+    detailTests.innerHTML = '<p class="empty-note">Yuklanmoqda...</p>';
+    detailAplus.innerHTML = '<p class="empty-note">Yuklanmoqda...</p>';
+    detailAttendance.innerHTML = '<p class="empty-note">Yuklanmoqda...</p>';
+    notesList.innerHTML = '<p class="empty-note">Yuklanmoqda...</p>';
+    newNote.value = '';
+    noteError.textContent = '';
+    detailBackdrop.hidden = false;
+
+    fetch(API_BASE + '/admin/students/' + telegramId + '/detail', { headers: authHeaders() })
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      renderTable(detailTests, data.test_results || [], [
+        {label:'Test', render:function(r){ return r.test_name || '—'; }},
+        {label:'Ball', render:function(r){ return r.score + ' / ' + r.total_questions; }},
+        {label:'Sana', render:function(r){ return fmtDate(r.submitted_at); }}
+      ]);
+      renderTable(detailAplus, data.aplus_results || [], [
+        {label:'Test', render:function(r){ return r.test_name || '—'; }},
+        {label:'Ball', render:function(r){ return r.score + ' / ' + r.question_count; }},
+        {label:'Sana', render:function(r){ return fmtDate(r.submitted_at); }}
+      ]);
+      renderTable(detailAttendance, data.attendance || [], [
+        {label:'Sessiya sanasi', render:function(r){ return fmtDate(r.created_at); }},
+        {label:'Kod', render:function(r){ return r.code || '—'; }},
+        {label:'Holat', render:function(r){ return r.attended ? '<span class="attend-yes">Qatnashdi</span>' : '<span class="attend-no">Qatnashmadi</span>'; }}
+      ]);
+    })
+    .catch(function(){
+      detailTests.innerHTML = detailAplus.innerHTML = detailAttendance.innerHTML =
+        '<p class="empty-note">Yuklab bo\'lmadi.</p>';
+    });
+
+    loadNotes(telegramId);
+  }
+
+  function loadNotes(telegramId){
+    fetch(API_BASE + '/admin/students/' + telegramId + '/notes', { headers: authHeaders() })
+    .then(function(res){ return res.json(); })
+    .then(function(notes){
+      if(!notes.length){ notesList.innerHTML = '<p class="empty-note">Hozircha izoh yo\'q.</p>'; return; }
+      notesList.innerHTML = notes.map(function(n){
+        return '<div class="note-item">' + n.note +
+          '<div class="note-meta">' + n.author_name + ' · ' + n.created_at + '</div></div>';
+      }).join('');
+    })
+    .catch(function(){ notesList.innerHTML = '<p class="empty-note">Yuklab bo\'lmadi.</p>'; });
+  }
+
+  document.getElementById('addNoteBtn').addEventListener('click', function(){
+    noteError.textContent = '';
+    var text = newNote.value.trim();
+    if(!text){ noteError.textContent = "Izoh bo'sh bo'lmasin."; return; }
+
+    fetch(API_BASE + '/admin/students/' + currentTelegramId + '/notes', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ note: text })
+    })
+    .then(function(res){ return res.json().then(function(body){ return {ok:res.ok, body:body}; }); })
+    .then(function(result){
+      if(!result.ok){
+        noteError.textContent = typeof result.body.detail === 'string' ? result.body.detail : 'Xatolik yuz berdi.';
+        return;
+      }
+      newNote.value = '';
+      loadNotes(currentTelegramId);
+    })
+    .catch(function(){ noteError.textContent = "Serverga ulanib bo'lmadi."; });
+  });
+
+  detailClose.addEventListener('click', function(){ detailBackdrop.hidden = true; });
+  detailBackdrop.addEventListener('click', function(e){ if(e.target === detailBackdrop) detailBackdrop.hidden = true; });
+
+  document.getElementById('refreshStudentsBtn').addEventListener('click', loadStudents);
+
+  document.getElementById('loginBtn').addEventListener('click', function(){
+    loginError.textContent = '';
+    var phone = document.getElementById('loginPhone').value.trim();
+    var password = document.getElementById('loginPassword').value;
+
+    fetch(API_BASE + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone, password: password })
+    })
+    .then(function(res){ return res.json().then(function(body){ return {ok:res.ok, body:body}; }); })
+    .then(function(result){
+      if(!result.ok){ loginError.textContent = result.body.detail || 'Xatolik'; return; }
+      saveToken(result.body.access_token);
+      fetch(API_BASE + '/admin/students', { headers: authHeaders() })
+        .then(function(res2){
+          if(res2.ok){ showPanel(); }
+          else { loginError.textContent = 'Bu hisob admin emas.'; localStorage.removeItem('mp_admin_token'); }
+        });
+    })
+    .catch(function(){ loginError.textContent = "Serverga ulanib bo'lmadi."; });
+  });
+
+  if(getToken()){ showPanel(); } else { showLogin(); }
+})();
+</script>
+</body>
+</html>
